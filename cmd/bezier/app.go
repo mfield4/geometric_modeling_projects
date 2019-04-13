@@ -44,32 +44,48 @@ func NewApp() *App {
 func (app *App) Input() ([]*ui.Command, bool) {
 	cmds := make([]*ui.Command, 0)
 
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch e := event.(type) {
-		case *sdl.QuitEvent:
-			return nil, false
-		case *sdl.MouseMotionEvent:
-			// fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", e.Timestamp, e.Type, e.Which, e.X, e.Y, e.XRel, e.YRel)
-		case *sdl.MouseButtonEvent:
-			fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n", e.Timestamp,
-				e.Type, e.Which, e.X, e.Y, e.Button, e.State)
+	status := func() bool {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch e := event.(type) {
+			case *sdl.QuitEvent:
+				return false
 
-			ui := app.findUI(e.X, e.Y)
-			out := ui.Input(e)
-			if out == nil {
-				continue
-			}
-			cmds = append(cmds, out)
+			case *sdl.MouseButtonEvent:
+				fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n", e.Timestamp, e.Type, e.Which, e.X, e.Y, e.Button, e.State)
+				out := app.findButtonCommand(e)
+				if out == nil {
+					continue
+				}
+				fmt.Printf("command %+v\n", out)
+				cmds = append(cmds, out)
+				return true
 
-		case *sdl.MouseWheelEvent:
-			// fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n", e.Timestamp, e.Type, e.Which, e.X, e.Y)
-		case *sdl.KeyboardEvent:
-			fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n", e.Timestamp, e.Type, e.Keysym.Sym, e.Keysym.Mod, e.State, e.Repeat)
-			if e.State == 1 && e.Keysym.Sym == sdl.K_r {
-				println("appending r")
+			case *sdl.KeyboardEvent:
+				//fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n", e.Timestamp, e.Type, e.Keysym.Sym, e.Keysym.Mod, e.State, e.Repeat)
+				if e.State == 1 && e.Keysym.Sym == sdl.K_r {
+					println("appending r")
+				}
 			}
 		}
+		sdl.FlushEvents(sdl.FIRSTEVENT, sdl.LASTEVENT)
+
+		return true
+	}()
+
+	if !status {
+		return nil, false
 	}
+
+	x, y, _ := sdl.GetMouseState()
+	//fmt.Printf("mouse states: %d, %d\n", x, y)
+
+	cmds = append(cmds, &ui.Command{
+		TypeOf: ui.MousePosition,
+		Target: sdl.Point{
+			X: x,
+			Y: y,
+		},
+	})
 
 	return cmds, true
 }
@@ -103,33 +119,57 @@ func (app *App) Delay(timePerFrame uint32) {
 	app.endTime = sdl.GetTicks()
 }
 
-func (app *App) findUI(x int32, y int32) ui.Ui {
-	collision := &sdl.Rect{
-		X: x,
-		Y: y,
-		W: 1,
-		H: 1,
+func (app *App) IsSelected() bool {
+	return app.Window.IsSelected()
+}
+
+func (app *App) findButtonCommand(event *sdl.MouseButtonEvent) *ui.Command {
+	mousePoint := sdl.Point{
+		X: event.X,
+		Y: event.Y,
 	}
 
-	uis := make([]ui.Ui, 0)
+	me := &ui.MouseEvent{
+		MouseButtonEvent: event,
+		MouseMotionEvent: nil,
+	}
+
+	cmds := make([]*ui.Command, 0)
 
 	for _, ui := range ui.GetCollisionMap() {
-		if collision.HasIntersection(ui.Rect()) {
-			uis = append(uis, ui)
+		if r := ui.Rect(); r != nil && mousePoint.InRect(r) {
+			cmd := ui.Input(me)
+
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
 	}
 
-	return app.resolveCollisions(uis)
+	return app.resolveCollisions(cmds)
+
+}
+
+func (app *App) findMotionCommand(event *sdl.MouseMotionEvent) *ui.Command {
+	return &ui.Command{
+		TypeOf: ui.MousePosition,
+		Target: sdl.Point{
+			X: event.X,
+			Y: event.Y,
+		},
+		TargetId: 0,
+		Layer:    0,
+	}
 
 }
 
 // TODO Iterates through found collisions, finding the most important one
-func (app *App) resolveCollisions(ints []ui.Ui) ui.Ui {
+func (app *App) resolveCollisions(ints []*ui.Command) *ui.Command {
 	if len(ints) == 0 {
 		return nil
 	}
 	sort.Slice(ints, func(i, j int) bool {
-		return ints[i].Layer() > ints[j].Layer()
+		return ints[i].Layer > ints[j].Layer
 	})
 
 	return ints[0]

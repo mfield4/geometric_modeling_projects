@@ -5,25 +5,37 @@ import (
 )
 
 type Canvas struct {
-	ID           int
+	Id           int
 	layer        int
 	currentCurve int
-	curves       map[int]BezierCurve
+	curves       map[int]Ui
 
 	dst *sdl.Rect
 }
 
+func (c *Canvas) Selected(bool) {}
+
+func (c *Canvas) IsSelected() bool {
+	for _, c := range c.curves {
+		if c.IsSelected() {
+			return true
+		}
+	}
+
+	return false
+}
+
 func NewCanvas(width int32, height int32) *Canvas {
 	initCurveId := GUID()
-	curves := map[int]BezierCurve{
-		initCurveId: NewCasteljauBezierCurve(initCurveId),
+	castel := map[int]Ui{
+		initCurveId: NewCasteljauBezierCurve(initCurveId, 2),
 	}
 
 	return &Canvas{
-		ID:           GUID(),
+		Id:           GUID(),
 		layer:        1,
 		currentCurve: initCurveId,
-		curves:       curves,
+		curves:       castel,
 		dst: &sdl.Rect{
 			X: 0,
 			Y: 0,
@@ -33,31 +45,37 @@ func NewCanvas(width int32, height int32) *Canvas {
 	}
 }
 
-func (c *Canvas) Input(event *sdl.MouseButtonEvent) *Command {
+func (c *Canvas) Input(event *MouseEvent) *Command {
 	// Exit conditions. Only want a left click release
-	if event.Button != 1 || event.State != sdl.RELEASED {
+	if event.Button != 1 || event.MouseButtonEvent.State != sdl.RELEASED {
 		return nil
 	}
 
 	return &Command{
-		typeOf: CanvasClick,
-		target: sdl.Point{
-			X: event.X,
-			Y: event.Y,
+		TypeOf: CanvasClick,
+		Target: sdl.Point{
+			X: event.MouseButtonEvent.X,
+			Y: event.MouseButtonEvent.Y,
 		},
-		targetId: c.ID,
+		TargetId: c.Id,
+		Layer:    c.layer,
 	}
 }
 
 func (c *Canvas) Update(cmd *Command) {
-	if cmd.targetId != c.ID {
-		return
-	}
 
-	switch cmd.typeOf {
+	switch cmd.TypeOf {
 	case Noop:
 	case CanvasClick:
-		c.addToCurves(cmd.target)
+		if cmd.TargetId != c.Id {
+			return
+		}
+
+		c.curves[c.currentCurve].Update(cmd)
+	case ControlPointPress, ControlPointRelease, MousePosition:
+		if cmd.Target.InRect(c.dst) {
+			c.curves[c.currentCurve].Update(cmd)
+		}
 	}
 }
 
@@ -75,13 +93,13 @@ func (c *Canvas) Rect() *sdl.Rect {
 }
 
 func (c *Canvas) Register(colM map[int]Ui) {
-	colM[c.ID] = c
+	colM[c.Id] = c
+
+	for _, cur := range c.curves {
+		cur.Register(colM)
+	}
 }
 
 func (c *Canvas) Layer() int {
 	return c.layer
-}
-
-func (c *Canvas) addToCurves(point sdl.Point) {
-	c.curves[c.currentCurve].Add(point)
 }
