@@ -18,11 +18,14 @@ type CasteljauBezierCurve struct {
 	Id    int
 	layer int
 
+	bern bool
+
 	focused bool
 	index   int
 
 	ctlPoints   []sdl.Point
 	curvePoints []sdl.Point
+	bernstein   [][]func(t float64) float64
 }
 
 func (cbc *CasteljauBezierCurve) Selected(s bool) {
@@ -37,27 +40,28 @@ func NewCasteljauBezierCurve(ID, layer int) *CasteljauBezierCurve {
 	return &CasteljauBezierCurve{
 		Id:          ID,
 		layer:       layer,
+		bern:        true,
 		focused:     false,
 		index:       0,
 		ctlPoints:   make([]sdl.Point, 0),
 		curvePoints: make([]sdl.Point, Steps),
+		bernstein:   make([][]func(float64) float64, 0),
 	}
 }
 
 func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
-	cbc.ctlPoints = append(cbc.ctlPoints, points...)
-}
-
-func (cbc *CasteljauBezierCurve) Draw() {
-	// Do the algorithm to get the points from the control points
-	if len(cbc.ctlPoints) < 3 {
-		return
-	}
-	for i := 0; i < Steps; i++ {
-		p := cbc.casteljauCurvePoint(float64(i) / float64(Steps))
-		cbc.curvePoints[i] = p
+	for _, pt := range points {
+		cbc.ctlPoints = append(cbc.ctlPoints, pt)
 	}
 
+	numPts := len(cbc.ctlPoints)
+	cbc.bernstein = make([][]func(float64) float64, numPts)
+	for i := 0; i < numPts; i++ {
+		cbc.bernstein[i] = make([]func(float64) float64, numPts)
+		for j := 0; j < i+1; j++ {
+			cbc.bernstein[i][j] = bernsteinPoly(int64(j), int64(i))
+		}
+	}
 }
 
 func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
@@ -187,7 +191,7 @@ func (cbc *CasteljauBezierCurve) inputPress(event *MouseEvent) *Command {
 			if !ok {
 				continue
 			}
-			if rect.W > 15 || rect.H > 15 {
+			if rect.W > 30 || rect.H > 30 {
 				continue
 			}
 
