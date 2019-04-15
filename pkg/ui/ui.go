@@ -5,12 +5,7 @@ import (
 )
 
 type Ui interface {
-	Input(*MouseEvent) *Command
-	Update(*Command)
 	Render(*sdl.Renderer)
-	Rect() *sdl.Rect
-	Register(map[int]Ui)
+	RegisterCol(map[int]Ui)
 	Layer() int
-	Selected(bool)
-	IsSelected() bool
 }

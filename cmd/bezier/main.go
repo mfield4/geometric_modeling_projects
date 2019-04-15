@@ -6,7 +6,10 @@ import (
 
 func main() {
 	app := NewApp()
-	app.Register(ui.GetCollisionMap())
+	app.RegisterCol(ui.GetCollisionMap())
+	app.RegisterM1d()
+	app.RegisterM1u()
+	app.RegisterMM()
 
 	const TimePerFrame = 16 // ms
 
@@ -15,6 +18,7 @@ func main() {
 		if !ok {
 			break
 		}
+		cmds = app.Collisions(cmds)
 		app.Update(cmds)
 		app.Render()
 		app.Delay(TimePerFrame)

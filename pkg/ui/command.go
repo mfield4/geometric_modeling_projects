@@ -1,9 +1,5 @@
 package ui
 
-import (
-	"github.com/veandco/go-sdl2/sdl"
-)
-
 type Event int
 
 const (
@@ -14,14 +10,20 @@ const (
 	MousePosition
 )
 
-type Command struct {
-	TypeOf   Event
-	Target   sdl.Point
-	TargetId int
-	Layer    int
+type Mouse1Down interface {
+	RegisterM1d(map[int]Mouse1Down)
+	PressActive(x, y int32) bool
+	Mouse1Down(x, y int32)
 }
 
-type MouseEvent struct {
-	*sdl.MouseButtonEvent
-	*sdl.MouseMotionEvent
+type Mouse1Up interface {
+	RegisterM1u(map[int]Mouse1Up)
+	ReleaseActive(x, y int32) bool
+	Mouse1Up(x, y int32)
+}
+
+type MouseMotion interface {
+	RegisterMM(map[int]MouseMotion)
+	MotionActive() bool
+	MouseMotion(x, y int32)
 }

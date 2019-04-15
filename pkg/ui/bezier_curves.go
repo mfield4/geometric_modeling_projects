@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/sdl"
+	"math"
 )
 
 type BezierCurve interface {
 	Ui
 	Add(...sdl.Point)
 	Draw()
+	RegisterM1d(downs map[int]Mouse1Down)
+	RegisterM1u(ups map[int]Mouse1Up)
+	RegisterMM(mouseMotions map[int]MouseMotion)
 }
 
 var Steps = 1000
@@ -88,31 +92,77 @@ func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
 	return ctlPoints[0]
 }
 
-func (cbc *CasteljauBezierCurve) Input(event *MouseEvent) *Command {
-	if cbc.focused {
-		return cbc.inputRelease(event)
+func (cbc *CasteljauBezierCurve) PressActive(x, y int32) bool {
+	cmp := func(p1, p2 sdl.Point) float64 {
+		first := math.Pow(float64(p2.X-p1.X), 2)
+		second := math.Pow(float64(p2.Y-p1.Y), 2)
+		return math.Sqrt(first + second)
 	}
-	return cbc.inputPress(event)
+
+	mousePt := sdl.Point{
+		X: x,
+		Y: y,
+	}
+
+	for i, pt := range cbc.ctlPoints {
+		if cmp(mousePt, pt) < 20 {
+			cbc.index = i
+			return true
+		}
+	}
+
+	return false
+}
+
+func (cbc *CasteljauBezierCurve) Mouse1Down(x, y int32) {
+	if cbc.focused {
+		return
+	}
+	cbc.focused = true
+
+	cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y = x, y
+	fmt.Printf("PRESSED x: %d, y %d\n", cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y)
+	cbc.Draw()
+}
+
+func (cbc *CasteljauBezierCurve) ReleaseActive(x, y int32) bool {
+	return cbc.focused
+}
+
+func (cbc *CasteljauBezierCurve) Mouse1Up(x, y int32) {
+	cbc.focused = false
+	cbc.Draw()
 
 }
 
-func (cbc *CasteljauBezierCurve) Update(cmd *Command) {
-	switch cmd.TypeOf {
-	case ControlPointPress:
-		cbc.cntlPointPressUpdate(cmd)
+func (cbc *CasteljauBezierCurve) MotionActive() bool {
+	return cbc.focused
+}
 
-	case ControlPointRelease:
-		cbc.cntlPointRelease(cmd)
+func (cbc *CasteljauBezierCurve) MouseMotion(x, y int32) {
+	cbc.ctlPoints[cbc.index].X = x
+	cbc.ctlPoints[cbc.index].Y = y
+	cbc.Draw()
+}
 
-	case MousePosition:
-		cbc.mousePositionCommand(cmd)
+func (cbc *CasteljauBezierCurve) RegisterCol(colM map[int]Ui) {
+	colM[cbc.Id] = cbc
+}
 
-	case CanvasClick:
-		cbc.canvasClickCommand(cmd)
+func (cbc *CasteljauBezierCurve) RegisterM1d(downs map[int]Mouse1Down) {
+	downs[cbc.Id] = cbc
+}
 
-	default:
-		return
-	}
+func (cbc *CasteljauBezierCurve) RegisterM1u(ups map[int]Mouse1Up) {
+	ups[cbc.Id] = cbc
+}
+
+func (cbc *CasteljauBezierCurve) RegisterMM(mm map[int]MouseMotion) {
+	mm[cbc.Id] = cbc
+}
+
+func (cbc *CasteljauBezierCurve) Layer() int {
+	return cbc.layer
 }
 
 func (cbc *CasteljauBezierCurve) Render(renderer *sdl.Renderer) {
@@ -164,111 +214,6 @@ func (cbc *CasteljauBezierCurve) Rect() *sdl.Rect {
 	}
 
 	return &minBoundedRect
-}
-
-func (cbc *CasteljauBezierCurve) Register(colM map[int]Ui) {
-	colM[cbc.Id] = cbc
-}
-
-func (cbc *CasteljauBezierCurve) Layer() int {
-	return cbc.layer
-}
-
-func (cbc *CasteljauBezierCurve) inputPress(event *MouseEvent) *Command {
-	if event.Button != 1 || event.MouseButtonEvent.State != sdl.PRESSED {
-		return nil
-	}
-
-	mousePoint := sdl.Point{
-		X: event.MouseButtonEvent.X,
-		Y: event.MouseButtonEvent.Y,
-	}
-
-	checkPoint := func() (int, bool) {
-		for i, pts := range cbc.ctlPoints {
-			points := []sdl.Point{mousePoint, pts}
-			rect, ok := sdl.EnclosePoints(points, nil)
-			if !ok {
-				continue
-			}
-			if rect.W > 30 || rect.H > 30 {
-				continue
-			}
-
-			return i, true
-		}
-		return 0, false
-	}
-
-	id, ok := checkPoint()
-	if !ok {
-		return nil
-	}
-
-	return &Command{
-		TypeOf:   ControlPointPress,
-		Target:   mousePoint,
-		TargetId: id,
-		Layer:    cbc.layer,
-	}
-}
-
-func (cbc *CasteljauBezierCurve) inputRelease(event *MouseEvent) *Command {
-	if event.Button != 1 || event.MouseButtonEvent.State != sdl.RELEASED {
-		return nil
-	}
-
-	mousePoint := sdl.Point{
-		X: event.MouseButtonEvent.X,
-		Y: event.MouseButtonEvent.Y,
-	}
-
-	return &Command{
-		TypeOf:   ControlPointRelease,
-		Target:   mousePoint,
-		TargetId: cbc.index,
-		Layer:    cbc.layer,
-	}
-}
-
-func (cbc *CasteljauBezierCurve) cntlPointPressUpdate(cmd *Command) {
-	if cbc.focused {
-		return
-	}
-	cbc.focused = true
-	cbc.index = cmd.TargetId
-
-	cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y = cmd.Target.X, cmd.Target.Y
-	fmt.Printf("PRESSED x: %d, y %d\n", cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y)
-}
-
-func (cbc *CasteljauBezierCurve) cntlPointRelease(cmd *Command) {
-	if cmd.TargetId != cbc.index {
-		fmt.Printf("NOT RELEASED x: %+v, index %d, %d, y %d\n", cmd, cbc.index, cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y)
-
-		return
-	}
-	fmt.Printf("RELEASED x: %+v, index %d, %d, y %d\n", cmd, cbc.index, cbc.ctlPoints[cbc.index].X,
-		cbc.ctlPoints[cbc.index].Y)
-
-	cbc.Draw()
-	cbc.focused = false
-	cbc.index = 0
-}
-
-func (cbc *CasteljauBezierCurve) mousePositionCommand(cmd *Command) {
-	if cbc.focused {
-		cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y = cmd.Target.X, cmd.Target.Y
-		cbc.Draw()
-	}
-}
-
-func (cbc *CasteljauBezierCurve) canvasClickCommand(cmd *Command) {
-	if cbc.focused {
-		return
-	}
-	cbc.Add(cmd.Target)
-	cbc.Draw()
 }
 
 func round(val float64) int32 {

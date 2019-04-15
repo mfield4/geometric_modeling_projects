@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 )
 
-var WindowWidth int32 = 1920
-var WindowHeight int32 = 1080
+var WindowWidth int32 = 2560
+var WindowHeight int32 = 1440
 
 type Window struct {
 	Id     int
@@ -19,13 +19,6 @@ type Window struct {
 	background    *sdl.Texture
 	dst           *sdl.Rect
 	width, height int32
-}
-
-func (w *Window) Selected(bool) {}
-
-func (w *Window) IsSelected() bool {
-	return w.canvas.IsSelected()
-
 }
 
 func NewWindow(renderer *sdl.Renderer) *Window {
@@ -58,15 +51,6 @@ func NewWindow(renderer *sdl.Renderer) *Window {
 	}
 }
 
-func (w *Window) Input(*MouseEvent) *Command {
-	return nil
-}
-
-func (w *Window) Update(cmd *Command) {
-	w.canvas.Update(cmd)
-	w.menu.Update(cmd)
-}
-
 func (w *Window) Render(renderer *sdl.Renderer) {
 	renderer.Copy(w.background, nil, w.dst)
 
@@ -78,11 +62,24 @@ func (w *Window) Rect() *sdl.Rect {
 	return w.dst
 }
 
-func (w *Window) Register(colM map[int]Ui) {
+func (w *Window) RegisterCol(colM map[int]Ui) {
 	colM[w.Id] = w
 
-	w.canvas.Register(colM)
+	w.canvas.RegisterCol(colM)
 	w.menu.Register(colM)
+}
+
+func (w *Window) RegisterM1d(m1d map[int]Mouse1Down) {
+	w.canvas.RegisterM1d(m1d)
+	w.menu.RegisterM1d(m1d)
+}
+
+func (w *Window) RegisterM1u(up map[int]Mouse1Up) {
+	w.canvas.RegisterM1u(up)
+}
+
+func (w *Window) RegisterMM(colM map[int]MouseMotion) {
+	w.canvas.RegisterMM(colM)
 }
 
 func (w *Window) Layer() int {
