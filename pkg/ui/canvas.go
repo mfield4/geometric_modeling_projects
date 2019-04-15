@@ -11,7 +11,6 @@ type Canvas struct {
 	curves       map[int]*CasteljauBezierCurve
 
 	dst *sdl.Rect
-	pc  *PreviewCanvas
 }
 
 func NewCanvas(width int32, height int32) *Canvas {
@@ -59,8 +58,6 @@ func (c *Canvas) Render(renderer *sdl.Renderer) {
 	for _, curve := range c.curves {
 		curve.Render(renderer)
 	}
-
-	c.pc.Render(renderer)
 }
 
 func (c *Canvas) RegisterCol(colM map[int]Ui) {
