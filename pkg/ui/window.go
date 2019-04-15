@@ -39,11 +39,14 @@ func NewWindow(renderer *sdl.Renderer) *Window {
 		H: WindowHeight,
 	}
 
+	canvas := NewCanvas(canvasW, WindowHeight)
+	menu := NewMenu(menuW, WindowHeight, canvas)
+
 	return &Window{
 		Id:         GUID(),
 		layer:      0,
-		canvas:     NewCanvas(canvasW, WindowHeight),
-		menu:       NewMenu(menuW, WindowHeight),
+		canvas:     canvas,
+		menu:       menu,
 		background: background,
 		dst:        dst,
 		width:      WindowWidth,
@@ -66,7 +69,7 @@ func (w *Window) RegisterCol(colM map[int]Ui) {
 	colM[w.Id] = w
 
 	w.canvas.RegisterCol(colM)
-	w.menu.Register(colM)
+	w.menu.RegisterCol(colM)
 }
 
 func (w *Window) RegisterM1d(m1d map[int]Mouse1Down) {

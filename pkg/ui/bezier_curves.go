@@ -216,6 +216,10 @@ func (cbc *CasteljauBezierCurve) Rect() *sdl.Rect {
 	return &minBoundedRect
 }
 
+func (cbc *CasteljauBezierCurve) current() []sdl.Point {
+	return cbc.curvePoints
+}
+
 func round(val float64) int32 {
 	if val < 0 {
 		return int32(val - 0.5)

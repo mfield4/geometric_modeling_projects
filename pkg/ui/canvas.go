@@ -8,14 +8,15 @@ type Canvas struct {
 	Id           int
 	layer        int
 	currentCurve int
-	curves       map[int]BezierCurve
+	curves       map[int]*CasteljauBezierCurve
 
 	dst *sdl.Rect
+	pc  *PreviewCanvas
 }
 
 func NewCanvas(width int32, height int32) *Canvas {
 	initCurveId := GUID()
-	castel := map[int]BezierCurve{
+	castel := map[int]*CasteljauBezierCurve{
 		initCurveId: NewCasteljauBezierCurve(initCurveId, 2),
 	}
 
@@ -49,6 +50,7 @@ func (c *Canvas) Mouse1Down(x, y int32) {
 		Y: y,
 	})
 	c.curves[c.currentCurve].Draw()
+	c.pc.Draw()
 }
 
 func (c *Canvas) Render(renderer *sdl.Renderer) {
@@ -58,6 +60,8 @@ func (c *Canvas) Render(renderer *sdl.Renderer) {
 	for _, curve := range c.curves {
 		curve.Render(renderer)
 	}
+
+	c.pc.Render(renderer)
 }
 
 func (c *Canvas) RegisterCol(colM map[int]Ui) {
