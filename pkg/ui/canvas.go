@@ -50,7 +50,6 @@ func (c *Canvas) Mouse1Down(x, y int32) {
 		Y: y,
 	})
 	c.curves[c.currentCurve].Draw()
-	c.pc.Draw()
 }
 
 func (c *Canvas) Render(renderer *sdl.Renderer) {
