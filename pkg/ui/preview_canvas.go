@@ -45,22 +45,22 @@ func (pc PreviewCanvas) Render(renderer *sdl.Renderer) {
 	renderer.SetDrawColor(0, 0, 255, 255)
 	renderer.DrawLines(newCurve)
 
-	l, r := curCurve.splitCurve(0.5)
+	l, r := curCurve.splitCurve(0.5, false)
 
-	for i, pt := range l {
+	for i, pt := range l.ctlPoints {
 		pt.X, pt.Y = ox+pt.X/xScale, oy+pt.Y/yScale
-		l[i] = pt
+		l.ctlPoints[i] = pt
 	}
 
-	for i, pt := range r {
+	for i, pt := range r.ctlPoints {
 		pt.X, pt.Y = ox+pt.X/xScale, oy+pt.Y/yScale
-		r[i] = pt
+		r.ctlPoints[i] = pt
 	}
 
 	renderer.SetDrawColor(0, 255, 0, 255)
-	renderer.DrawLines(l)
+	renderer.DrawLines(l.ctlPoints)
 
 	renderer.SetDrawColor(255, 0, 0, 255)
-	renderer.DrawLines(r)
+	renderer.DrawLines(r.ctlPoints)
 
 }

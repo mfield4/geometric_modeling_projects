@@ -16,7 +16,7 @@ type Canvas struct {
 func NewCanvas(width int32, height int32) *Canvas {
 	initCurveId := GUID()
 	castel := map[int]*CasteljauBezierCurve{
-		initCurveId: NewCasteljauBezierCurve(initCurveId, 2),
+		initCurveId: NewCasteljauBezierCurve(initCurveId, 2, true),
 	}
 
 	canvas := &Canvas{
@@ -49,39 +49,47 @@ func (c *Canvas) Render(renderer *sdl.Renderer) {
 	}
 
 	rect := c.curves[c.currentCurve].Rect()
-	renderer.SetDrawColor(255, 255, 255, 255)
-	renderer.DrawRect(rect)
+	if rect == nil {
+		return
+	}
+
+	//renderer.SetDrawColor(255, 255, 255, 255)
+	//renderer.DrawRect(rect)
+	//
+	//for _, pt := range c.Intersections() {
+	//    gfx.CircleColor(renderer, pt.X, pt.Y, 5, sdl.Color{
+	//        R: 0,
+	//        G: 255,
+	//        B: 255,
+	//        A: 255,
+	//    })
+	//}
+
 }
 
 func (c *Canvas) Split(t float64) {
 	curCurve := c.curves[c.currentCurve]
 
-	newCurveL := NewCasteljauBezierCurve(c.currentCurve, 2)
-	newCurveR := NewCasteljauBezierCurve(GUID(), 2)
+	l, r := curCurve.splitCurve(t, true)
 
-	l, r := curCurve.splitCurve(t)
+	length := len(l.ctlPoints)
 
-	length := len(l)
+	l.ctlPoints[length-1].X -= 10
+	l.ctlPoints[length-1].Y -= 10
+	r.ctlPoints[0].X += 10
+	r.ctlPoints[0].Y += 10
 
-	l[length-1].X -= 10
-	l[length-1].Y -= 10
-	r[0].X += 10
-	r[0].Y += 10
+	l.Draw()
+	r.Draw()
 
-	newCurveL.Add(l...)
-	newCurveR.Add(r...)
-
-	newCurveL.Draw()
-	newCurveR.Draw()
-
-	c.curves[c.currentCurve] = newCurveL
-	c.curves[newCurveR.Id] = newCurveR
+	c.curves[c.currentCurve] = l
+	c.curves[r.Id] = r
 }
 
-func generateCombinations(input []sdl.Rect, length int) <-chan []sdl.Rect {
-	c := make(chan []sdl.Rect)
+func generateCombinations(input []*CasteljauBezierCurve, length int) <-chan []*CasteljauBezierCurve {
+	c := make(chan []*CasteljauBezierCurve)
 
-	go func(c chan []sdl.Rect) {
+	go func(c chan []*CasteljauBezierCurve) {
 		defer close(c)
 
 		AddCombo(c, nil, input, length)
@@ -90,12 +98,12 @@ func generateCombinations(input []sdl.Rect, length int) <-chan []sdl.Rect {
 	return c
 }
 
-func AddCombo(c chan []sdl.Rect, input, original []sdl.Rect, length int) {
+func AddCombo(c chan []*CasteljauBezierCurve, input, original []*CasteljauBezierCurve, length int) {
 	if length <= 0 {
 		return
 	}
 
-	var newCombo []sdl.Rect
+	var newCombo []*CasteljauBezierCurve
 	for _, ch := range original {
 		newCombo = append(input, ch)
 		c <- newCombo
@@ -103,12 +111,67 @@ func AddCombo(c chan []sdl.Rect, input, original []sdl.Rect, length int) {
 	}
 }
 
-func (c *Canvas) Intersections() []sdl.Point {
+func curveIntersections(curve1 *CasteljauBezierCurve, curve2 *CasteljauBezierCurve) []sdl.Point {
 	/*
-	 */
+	    c1l -> c2l
+	    c1l -> c2r
+	    c1r -> c2r
+	    c1r -> c2r
 
-	return nil
+	   Check If curves intersect.
+	   If no, return nil.
+	   If yes
+	        Split curves. Find halves that intersect.
+	        If Threshold reached, return midpoint of intersecting curves.
+
+	        return curveIntersection(l,r)
+	*/
+	if !curve1.Rect().HasIntersection(curve2.Rect()) {
+		return nil
+	}
+
+	c1l, c1r := curve1.splitCurve(0.5, false)
+	c2l, c2r := curve2.splitCurve(0.5, false)
+
+	var points []sdl.Point
+	var curves []*CasteljauBezierCurve
+	localCombs := generateCombinations(append(curves, c1l, c1r, c2l, c2r), 2)
+
+	for cmb := range localCombs {
+		if len(cmb) != 2 {
+			continue
+		}
+		if cmb[0].Rect().HasIntersection(cmb[1].Rect()) {
+			points = append(points, curveIntersections(cmb[0], cmb[1])...)
+		}
+	}
+
+	return points
 }
+
+func (c *Canvas) Intersections() []sdl.Point {
+	var intersections []sdl.Point
+	var curves []*CasteljauBezierCurve
+	if len(c.curves) < 2 {
+		return nil
+	}
+
+	for _, cur := range c.curves {
+		curves = append(curves, cur)
+	}
+	combinations := generateCombinations(curves, 2)
+
+	for curveComb := range combinations {
+		if len(curveComb) != 2 {
+			continue
+		}
+
+		intersections = append(intersections, curveIntersections(curveComb[0], curveComb[1])...)
+	}
+
+	return intersections
+}
+
 func (c *Canvas) PressActive(x, y int32) bool {
 	pt := sdl.Point{X: x, Y: y}
 

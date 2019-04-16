@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 )
 
-var WindowWidth int32 = 2560
-var WindowHeight int32 = 1440
+var WindowWidth int32 = 1280
+var WindowHeight int32 = 720
 
 type Window struct {
 	Id     int

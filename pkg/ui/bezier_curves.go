@@ -40,7 +40,7 @@ func (cbc *CasteljauBezierCurve) IsSelected() bool {
 	return cbc.focused
 }
 
-func NewCasteljauBezierCurve(ID, layer int) *CasteljauBezierCurve {
+func NewCasteljauBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
 	cbc := &CasteljauBezierCurve{
 		Id:          ID,
 		layer:       layer,
@@ -52,11 +52,12 @@ func NewCasteljauBezierCurve(ID, layer int) *CasteljauBezierCurve {
 		bernstein:   make([][]func(float64) float64, 0),
 	}
 
-	cbc.RegisterCol()
-	cbc.RegisterM1d()
-	cbc.RegisterM1u()
-	cbc.RegisterMM()
-
+	if register {
+		cbc.RegisterCol()
+		cbc.RegisterM1d()
+		cbc.RegisterM1u()
+		cbc.RegisterMM()
+	}
 	return cbc
 }
 

@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"fmt"
-	"github.com/veandco/go-sdl2/sdl"
 	"math"
 	"math/big"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func (cbc *CasteljauBezierCurve) Draw() {
@@ -28,16 +28,21 @@ func (cbc *CasteljauBezierCurve) drawCastel() {
 }
 
 func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
-	lPoints, _ := cbc.splitCurve(t)
+	lPoints, _ := cbc.splitCurve(t, false)
 
-	return lPoints[len(cbc.ctlPoints)-1]
+	return lPoints.ctlPoints[len(lPoints.ctlPoints)-1]
 }
 
-func (cbc *CasteljauBezierCurve) splitCurve(t float64) (l []sdl.Point, r []sdl.Point) {
+func (cbc *CasteljauBezierCurve) splitCurve(t float64, register bool) (l *CasteljauBezierCurve, r *CasteljauBezierCurve) {
 	length := len(cbc.ctlPoints)
 	ctlPoints := make([][]sdl.Point, length+1)
-	l = make([]sdl.Point, length)
-	r = make([]sdl.Point, length)
+	if register {
+		l = NewCasteljauBezierCurve(cbc.Id, cbc.layer, register)
+		r = NewCasteljauBezierCurve(GUID(), cbc.layer, register)
+	} else {
+		l = NewCasteljauBezierCurve(cbc.Id, cbc.layer, register)
+		r = NewCasteljauBezierCurve(cbc.Id, cbc.layer, register)
+	}
 
 	for i := 0; i < length+1; i++ {
 		ctlPoints[i] = make([]sdl.Point, length+1)
@@ -59,8 +64,8 @@ func (cbc *CasteljauBezierCurve) splitCurve(t float64) (l []sdl.Point, r []sdl.P
 	}
 
 	for k := 0; k < length; k++ {
-		l[k].X, l[k].Y = ctlPoints[k][0].X, ctlPoints[k][0].Y
-		r[k].X, r[k].Y = ctlPoints[length-k-1][k].X, ctlPoints[length-k-1][k].Y
+		l.Add(ctlPoints[k][0])
+		r.Add(ctlPoints[length-k-1][k])
 	}
 
 	return
@@ -75,10 +80,7 @@ func (cbc *CasteljauBezierCurve) drawBern() {
 		toAdd := sdl.Point{}
 		var x, y float64
 		for i, pt := range cbc.ctlPoints {
-			var nt float64 = float64(t) / float64(Steps)
-			if math.Abs(nt-1) < 0.01 {
-				fmt.Printf("%+v\n", nt)
-			}
+			var nt = float64(t) / float64(Steps)
 			nt = cbc.bernstein[len(cbc.ctlPoints)-1][i](nt)
 			x += float64(pt.X) * nt
 			y += float64(pt.Y) * nt
@@ -92,7 +94,7 @@ func bernsteinPoly(k, n int64) func(t float64) float64 {
 	binom := big.NewInt(0)
 	binom = binom.Binomial(n, k)
 	return func(t float64) float64 {
-		var nt float64 = math.Pow(float64(t), float64(k)) * math.Pow(float64(1-t), float64(n-k))
+		var nt = math.Pow(float64(t), float64(k)) * math.Pow(float64(1-t), float64(n-k))
 		return float64(binom.Int64()) * nt
 	}
 }
