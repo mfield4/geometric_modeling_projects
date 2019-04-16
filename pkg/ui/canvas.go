@@ -19,7 +19,7 @@ func NewCanvas(width int32, height int32) *Canvas {
 		initCurveId: NewCasteljauBezierCurve(initCurveId, 2),
 	}
 
-	return &Canvas{
+	canvas := &Canvas{
 		Id:           GUID(),
 		layer:        1,
 		currentCurve: initCurveId,
@@ -31,6 +31,51 @@ func NewCanvas(width int32, height int32) *Canvas {
 			H: height,
 		},
 	}
+	canvas.RegisterCol()
+	canvas.RegisterM1d()
+	canvas.RegisterM2d()
+	return canvas
+}
+
+func (c *Canvas) Render(renderer *sdl.Renderer) {
+	renderer.SetDrawColor(0, 0, 0, 255)
+	renderer.FillRect(c.dst)
+
+	for _, curve := range c.curves {
+		curve.Render(renderer)
+		if curve.focused {
+			c.currentCurve = curve.Id
+		}
+	}
+
+	rect := c.curves[c.currentCurve].Rect()
+	renderer.SetDrawColor(255, 255, 255, 255)
+	renderer.DrawRect(rect)
+}
+
+func (c *Canvas) Split(t float64) {
+	curCurve := c.curves[c.currentCurve]
+
+	newCurveL := NewCasteljauBezierCurve(c.currentCurve, 2)
+	newCurveR := NewCasteljauBezierCurve(GUID(), 2)
+
+	l, r := curCurve.splitCurve(t)
+
+	length := len(l)
+
+	l[length-1].X -= 10
+	l[length-1].Y -= 10
+	r[0].X += 10
+	r[0].Y += 10
+
+	newCurveL.Add(l...)
+	newCurveR.Add(r...)
+
+	newCurveL.Draw()
+	newCurveR.Draw()
+
+	c.curves[c.currentCurve] = newCurveL
+	c.curves[newCurveR.Id] = newCurveR
 }
 
 func (c *Canvas) PressActive(x, y int32) bool {
@@ -51,41 +96,30 @@ func (c *Canvas) Mouse1Down(x, y int32) {
 	c.curves[c.currentCurve].Draw()
 }
 
-func (c *Canvas) Render(renderer *sdl.Renderer) {
-	renderer.SetDrawColor(0, 0, 0, 255)
-	renderer.FillRect(c.dst)
-
-	for _, curve := range c.curves {
-		curve.Render(renderer)
+func (c *Canvas) Mouse2Down(x, y int32) {
+	mousePt := sdl.Point{
+		X: x,
+		Y: y,
+	}
+	if mousePt.InRect(c.dst) {
+		c.Split(0.5)
 	}
 }
 
-func (c *Canvas) RegisterCol(colM map[int]Ui) {
-	colM[c.Id] = c
-
-	for _, cur := range c.curves {
-		cur.RegisterCol(colM)
-	}
+func (c *Canvas) RightActive() bool {
+	return true
 }
 
-func (c *Canvas) RegisterM1d(downs map[int]Mouse1Down) {
-	downs[c.Id] = c
-
-	for _, cur := range c.curves {
-		cur.RegisterM1d(downs)
-	}
+func (c *Canvas) RegisterCol() {
+	GetCollisionMap()[c.Id] = c
 }
 
-func (c *Canvas) RegisterM1u(up map[int]Mouse1Up) {
-	for _, cur := range c.curves {
-		cur.RegisterM1u(up)
-	}
+func (c *Canvas) RegisterM1d() {
+	GetMouse1dCommands()[c.Id] = c
 }
 
-func (c *Canvas) RegisterMM(mm map[int]MouseMotion) {
-	for _, cur := range c.curves {
-		cur.RegisterMM(mm)
-	}
+func (c *Canvas) RegisterM2d() {
+	GetMouse2dCommands()[c.Id] = c
 }
 
 func (c *Canvas) Layer() int {

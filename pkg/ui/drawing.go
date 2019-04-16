@@ -27,6 +27,45 @@ func (cbc *CasteljauBezierCurve) drawCastel() {
 	}
 }
 
+func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
+	lPoints, _ := cbc.splitCurve(t)
+
+	return lPoints[len(cbc.ctlPoints)-1]
+}
+
+func (cbc *CasteljauBezierCurve) splitCurve(t float64) (l []sdl.Point, r []sdl.Point) {
+	length := len(cbc.ctlPoints)
+	ctlPoints := make([][]sdl.Point, length+1)
+	l = make([]sdl.Point, length)
+	r = make([]sdl.Point, length)
+
+	for i := 0; i < length+1; i++ {
+		ctlPoints[i] = make([]sdl.Point, length+1)
+	}
+	for i := range cbc.ctlPoints {
+		ctlPoints[0][i] = cbc.ctlPoints[i]
+	}
+	for j := 1; j < length; j++ {
+		for i := 0; i < (length - j); i++ {
+			pointFunc := func(pt1, pt2 sdl.Point) sdl.Point {
+				pt := sdl.Point{
+					X: round((1-t)*float64(pt1.X) + t*float64(pt2.X)),
+					Y: round((1-t)*float64(pt1.Y) + t*float64(pt2.Y)),
+				}
+				return pt
+			}
+			ctlPoints[j][i] = pointFunc(ctlPoints[j-1][i], ctlPoints[j-1][i+1])
+		}
+	}
+
+	for k := 0; k < length; k++ {
+		l[k].X, l[k].Y = ctlPoints[k][0].X, ctlPoints[k][0].Y
+		r[k].X, r[k].Y = ctlPoints[length-k-1][k].X, ctlPoints[length-k-1][k].Y
+	}
+
+	return
+}
+
 func (cbc *CasteljauBezierCurve) drawBern() {
 	if len(cbc.ctlPoints) < 3 {
 		return

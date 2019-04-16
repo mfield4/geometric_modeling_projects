@@ -12,10 +12,6 @@ type App struct {
 	sdlRenderer *sdl.Renderer
 
 	Window *ui.Window
-
-	m1dCommands     map[int]ui.Mouse1Down
-	m1uCommands     map[int]ui.Mouse1Up
-	mMotionCommands map[int]ui.MouseMotion
 }
 
 func NewApp() *App {
@@ -35,14 +31,11 @@ func NewApp() *App {
 	}
 
 	return &App{
-		startTime:       sdl.GetTicks(),
-		endTime:         sdl.GetTicks(),
-		sdlWindow:       window,
-		sdlRenderer:     renderer,
-		Window:          ui.NewWindow(renderer),
-		m1dCommands:     map[int]ui.Mouse1Down{},
-		m1uCommands:     map[int]ui.Mouse1Up{},
-		mMotionCommands: map[int]ui.MouseMotion{},
+		startTime:   sdl.GetTicks(),
+		endTime:     sdl.GetTicks(),
+		sdlWindow:   window,
+		sdlRenderer: renderer,
+		Window:      ui.NewWindow(renderer),
 	}
 }
 
@@ -56,24 +49,12 @@ func (app *App) Input() (map[int]func(int), bool) {
 				return false
 
 			case *sdl.MouseButtonEvent:
-				if e.Button != 1 {
-					return true
+				if e.Button == 3 {
+					app.rightButton(e, cmds)
 				}
 
-				if e.State == sdl.PRESSED {
-					for id, cmd := range app.leftButtonPressed(e) {
-						cmds[id] = cmd
-					}
-
-					return true
-				}
-
-				if e.State == sdl.RELEASED {
-					for id, cmd := range app.leftButtonReleased(e) {
-						cmds[id] = cmd
-					}
-
-					return true
+				if e.Button == 1 {
+					app.leftButton(e, cmds)
 				}
 
 				return true
@@ -104,6 +85,31 @@ func (app *App) Input() (map[int]func(int), bool) {
 	}
 
 	return cmds, true
+}
+
+func (app *App) leftButton(e *sdl.MouseButtonEvent, cmds map[int]func(int)) {
+	if e.State == sdl.PRESSED {
+		for id, cmd := range app.leftButtonPressed(e) {
+			cmds[id] = cmd
+		}
+		return
+	}
+
+	if e.State == sdl.RELEASED {
+		for id, cmd := range app.leftButtonReleased(e) {
+			cmds[id] = cmd
+		}
+		return
+	}
+}
+
+func (app *App) rightButton(e *sdl.MouseButtonEvent, cmds map[int]func(int)) {
+	if e.State == sdl.PRESSED {
+		for id, cmd := range app.rightButtonPressed(e) {
+			cmds[id] = cmd
+		}
+		return
+	}
 }
 
 // TODO Iterates through found collisions, finding the most important one
@@ -152,29 +158,13 @@ func (app *App) Delay(timePerFrame uint32) {
 	app.endTime = sdl.GetTicks()
 }
 
-func (app *App) RegisterCol(colM map[int]ui.Ui) {
-	app.Window.RegisterCol(colM)
-}
-
-func (app *App) RegisterM1d() {
-	app.Window.RegisterM1d(app.m1dCommands)
-}
-
-func (app *App) RegisterM1u() {
-	app.Window.RegisterM1u(app.m1uCommands)
-}
-
-func (app *App) RegisterMM() {
-	app.Window.RegisterMM(app.mMotionCommands)
-}
-
 func (app *App) leftButtonPressed(event *sdl.MouseButtonEvent) map[int]func(int) {
 	cmds := map[int]func(int){}
 
-	for id, cmd := range app.m1dCommands {
+	for id, cmd := range ui.GetMouse1dCommands() {
 		if cmd.PressActive(event.X, event.Y) {
 			cmds[id] = func(id int) {
-				app.m1dCommands[id].Mouse1Down(event.X, event.Y)
+				ui.GetMouse1dCommands()[id].Mouse1Down(event.X, event.Y)
 			}
 		}
 	}
@@ -185,10 +175,10 @@ func (app *App) leftButtonPressed(event *sdl.MouseButtonEvent) map[int]func(int)
 func (app *App) leftButtonReleased(event *sdl.MouseButtonEvent) map[int]func(int) {
 	cmds := map[int]func(int){}
 
-	for id, cmd := range app.m1uCommands {
+	for id, cmd := range ui.GetMouse1uCommands() {
 		if cmd.ReleaseActive(event.X, event.Y) {
 			cmds[id] = func(id int) {
-				app.m1uCommands[id].Mouse1Up(event.X, event.Y)
+				ui.GetMouse1uCommands()[id].Mouse1Up(event.X, event.Y)
 			}
 		}
 	}
@@ -199,11 +189,25 @@ func (app *App) leftButtonReleased(event *sdl.MouseButtonEvent) map[int]func(int
 func (app *App) mouseMotionCommand() map[int]func(int) {
 	cmds := map[int]func(int){}
 
-	for id, cmd := range app.mMotionCommands {
+	for id, cmd := range ui.GetMouseMMCommands() {
 		if cmd.MotionActive() {
 			cmds[id] = func(id int) {
 				x, y, _ := sdl.GetMouseState()
-				app.mMotionCommands[id].MouseMotion(x, y)
+				ui.GetMouseMMCommands()[id].MouseMotion(x, y)
+			}
+		}
+	}
+
+	return cmds
+}
+
+func (app *App) rightButtonPressed(event *sdl.MouseButtonEvent) map[int]func(int) {
+	cmds := map[int]func(int){}
+
+	for id, cmd := range ui.GetMouse2dCommands() {
+		if cmd.RightActive() {
+			cmds[id] = func(id int) {
+				ui.GetMouse2dCommands()[id].Mouse2Down(event.X, event.Y)
 			}
 		}
 	}

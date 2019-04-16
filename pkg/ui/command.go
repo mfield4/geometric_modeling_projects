@@ -11,19 +11,25 @@ const (
 )
 
 type Mouse1Down interface {
-	RegisterM1d(map[int]Mouse1Down)
+	RegisterM1d()
 	PressActive(x, y int32) bool
 	Mouse1Down(x, y int32)
 }
 
 type Mouse1Up interface {
-	RegisterM1u(map[int]Mouse1Up)
+	RegisterM1u()
 	ReleaseActive(x, y int32) bool
 	Mouse1Up(x, y int32)
 }
 
 type MouseMotion interface {
-	RegisterMM(map[int]MouseMotion)
+	RegisterMM()
 	MotionActive() bool
 	MouseMotion(x, y int32)
+}
+
+type Mouse2Down interface {
+	RegisterM2d()
+	RightActive() bool
+	Mouse2Down(x, y int32)
 }

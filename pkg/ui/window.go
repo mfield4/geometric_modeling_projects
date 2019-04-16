@@ -42,7 +42,7 @@ func NewWindow(renderer *sdl.Renderer) *Window {
 	canvas := NewCanvas(canvasW, WindowHeight)
 	menu := NewMenu(menuW, WindowHeight, canvas)
 
-	return &Window{
+	win := &Window{
 		Id:         GUID(),
 		layer:      0,
 		canvas:     canvas,
@@ -52,6 +52,10 @@ func NewWindow(renderer *sdl.Renderer) *Window {
 		width:      WindowWidth,
 		height:     WindowHeight,
 	}
+
+	win.RegisterCol()
+
+	return win
 }
 
 func (w *Window) Render(renderer *sdl.Renderer) {
@@ -65,24 +69,8 @@ func (w *Window) Rect() *sdl.Rect {
 	return w.dst
 }
 
-func (w *Window) RegisterCol(colM map[int]Ui) {
-	colM[w.Id] = w
-
-	w.canvas.RegisterCol(colM)
-	w.menu.RegisterCol(colM)
-}
-
-func (w *Window) RegisterM1d(m1d map[int]Mouse1Down) {
-	w.canvas.RegisterM1d(m1d)
-	w.menu.RegisterM1d(m1d)
-}
-
-func (w *Window) RegisterM1u(up map[int]Mouse1Up) {
-	w.canvas.RegisterM1u(up)
-}
-
-func (w *Window) RegisterMM(colM map[int]MouseMotion) {
-	w.canvas.RegisterMM(colM)
+func (w *Window) RegisterCol() {
+	GetCollisionMap()[w.Id] = w
 }
 
 func (w *Window) Layer() int {

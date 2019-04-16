@@ -6,6 +6,6 @@ import (
 
 type Ui interface {
 	Render(*sdl.Renderer)
-	RegisterCol(map[int]Ui)
+	RegisterCol()
 	Layer() int
 }

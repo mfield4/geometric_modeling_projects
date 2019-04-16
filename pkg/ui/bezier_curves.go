@@ -41,7 +41,7 @@ func (cbc *CasteljauBezierCurve) IsSelected() bool {
 }
 
 func NewCasteljauBezierCurve(ID, layer int) *CasteljauBezierCurve {
-	return &CasteljauBezierCurve{
+	cbc := &CasteljauBezierCurve{
 		Id:          ID,
 		layer:       layer,
 		bern:        true,
@@ -51,6 +51,13 @@ func NewCasteljauBezierCurve(ID, layer int) *CasteljauBezierCurve {
 		curvePoints: make([]sdl.Point, Steps),
 		bernstein:   make([][]func(float64) float64, 0),
 	}
+
+	cbc.RegisterCol()
+	cbc.RegisterM1d()
+	cbc.RegisterM1u()
+	cbc.RegisterMM()
+
+	return cbc
 }
 
 func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
@@ -66,30 +73,6 @@ func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
 			cbc.bernstein[i][j] = bernsteinPoly(int64(j), int64(i))
 		}
 	}
-}
-
-func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
-	length := len(cbc.ctlPoints)
-	ctlPoints := make([]sdl.Point, length+1)
-
-	for i := range cbc.ctlPoints {
-		ctlPoints[i] = cbc.ctlPoints[i]
-	}
-
-	for k := 1; k < length; k++ {
-		for i := 0; i < (length - k); i++ {
-			pointFunc := func(pt1, pt2 sdl.Point) sdl.Point {
-				return sdl.Point{
-					X: round((1-t)*float64(pt1.X) + t*float64(pt2.X)),
-					Y: round((1-t)*float64(pt1.Y) + t*float64(pt2.Y)),
-				}
-			}
-			ctlPoints[i] = pointFunc(ctlPoints[i], ctlPoints[i+1])
-
-		}
-	}
-
-	return ctlPoints[0]
 }
 
 func (cbc *CasteljauBezierCurve) PressActive(x, y int32) bool {
@@ -145,20 +128,20 @@ func (cbc *CasteljauBezierCurve) MouseMotion(x, y int32) {
 	cbc.Draw()
 }
 
-func (cbc *CasteljauBezierCurve) RegisterCol(colM map[int]Ui) {
-	colM[cbc.Id] = cbc
+func (cbc *CasteljauBezierCurve) RegisterCol() {
+	GetCollisionMap()[cbc.Id] = cbc
 }
 
-func (cbc *CasteljauBezierCurve) RegisterM1d(downs map[int]Mouse1Down) {
-	downs[cbc.Id] = cbc
+func (cbc *CasteljauBezierCurve) RegisterM1d() {
+	GetMouse1dCommands()[cbc.Id] = cbc
 }
 
-func (cbc *CasteljauBezierCurve) RegisterM1u(ups map[int]Mouse1Up) {
-	ups[cbc.Id] = cbc
+func (cbc *CasteljauBezierCurve) RegisterM1u() {
+	GetMouse1uCommands()[cbc.Id] = cbc
 }
 
-func (cbc *CasteljauBezierCurve) RegisterMM(mm map[int]MouseMotion) {
-	mm[cbc.Id] = cbc
+func (cbc *CasteljauBezierCurve) RegisterMM() {
+	GetMouseMMCommands()[cbc.Id] = cbc
 }
 
 func (cbc *CasteljauBezierCurve) Layer() int {
@@ -186,10 +169,10 @@ func (cbc *CasteljauBezierCurve) Render(renderer *sdl.Renderer) {
 		return
 	}
 
-	if cbc.focused {
-		renderer.SetDrawColor(255, 255, 255, 255/2)
-		renderer.DrawRect(cbc.Rect())
-	}
+	//if cbc.focused {
+	//	renderer.SetDrawColor(255, 255, 255, 255/2)
+	//	renderer.DrawRect(cbc.Rect())
+	//}
 	renderer.SetDrawColor(0, 0, 255, 255)
 	renderer.DrawLines(cbc.curvePoints)
 }
