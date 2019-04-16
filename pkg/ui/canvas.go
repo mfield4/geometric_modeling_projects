@@ -78,6 +78,37 @@ func (c *Canvas) Split(t float64) {
 	c.curves[newCurveR.Id] = newCurveR
 }
 
+func generateCombinations(input []sdl.Rect, length int) <-chan []sdl.Rect {
+	c := make(chan []sdl.Rect)
+
+	go func(c chan []sdl.Rect) {
+		defer close(c)
+
+		AddCombo(c, nil, input, length)
+	}(c)
+
+	return c
+}
+
+func AddCombo(c chan []sdl.Rect, input, original []sdl.Rect, length int) {
+	if length <= 0 {
+		return
+	}
+
+	var newCombo []sdl.Rect
+	for _, ch := range original {
+		newCombo = append(input, ch)
+		c <- newCombo
+		AddCombo(c, newCombo, original, length-1)
+	}
+}
+
+func (c *Canvas) Intersections() []sdl.Point {
+	/*
+	 */
+
+	return nil
+}
 func (c *Canvas) PressActive(x, y int32) bool {
 	pt := sdl.Point{X: x, Y: y}
 
