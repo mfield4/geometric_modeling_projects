@@ -68,6 +68,8 @@ func (cbc *CasteljauBezierCurve) splitCurve(t float64, register bool) (l *Castel
 		r.Add(ctlPoints[length-k-1][k])
 	}
 
+	l.Draw()
+	r.Draw()
 	return
 }
 

@@ -1,8 +1,11 @@
 package ui
 
 import (
+	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/sdl"
 )
+
+var THRESHOLD int32 = 10
 
 type Canvas struct {
 	Id           int
@@ -53,17 +56,17 @@ func (c *Canvas) Render(renderer *sdl.Renderer) {
 		return
 	}
 
-	//renderer.SetDrawColor(255, 255, 255, 255)
-	//renderer.DrawRect(rect)
-	//
-	//for _, pt := range c.Intersections() {
-	//    gfx.CircleColor(renderer, pt.X, pt.Y, 5, sdl.Color{
-	//        R: 0,
-	//        G: 255,
-	//        B: 255,
-	//        A: 255,
-	//    })
-	//}
+	renderer.SetDrawColor(255, 255, 255, 255)
+	renderer.DrawRect(rect)
+
+	for _, pt := range c.Intersections() {
+		gfx.CircleColor(renderer, pt.X, pt.Y, 5, sdl.Color{
+			R: 0,
+			G: 255,
+			B: 255,
+			A: 255,
+		})
+	}
 
 }
 
@@ -141,12 +144,31 @@ func curveIntersections(curve1 *CasteljauBezierCurve, curve2 *CasteljauBezierCur
 		if len(cmb) != 2 {
 			continue
 		}
-		if cmb[0].Rect().HasIntersection(cmb[1].Rect()) {
-			points = append(points, curveIntersections(cmb[0], cmb[1])...)
+		r1 := cmb[0].Rect()
+		r2 := cmb[1].Rect()
+
+		ri, ok := r1.Intersect(r2)
+		if !ok {
+			continue
+		}
+
+		rectSize := ri.W * ri.W
+		if rectSize < THRESHOLD {
+			points = append(points, midpoint(sdl.Point{X: r1.X, Y: r1.Y}, sdl.Point{X: r2.X, Y: r2.Y}))
+			continue
+		}
+		newPoints := curveIntersections(cmb[0], cmb[1])
+		if newPoints != nil {
+			points = append(points, newPoints...)
 		}
 	}
 
 	return points
+}
+
+func midpoint(a, b sdl.Point) sdl.Point {
+	x, y := (a.X+b.X)/2, (a.Y+b.Y)/2
+	return sdl.Point{X: x, Y: y}
 }
 
 func (c *Canvas) Intersections() []sdl.Point {
