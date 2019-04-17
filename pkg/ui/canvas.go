@@ -5,7 +5,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-var THRESHOLD int32 = 10
+var THRESHOLD int32 = 30
+var SplitVal = 0.5
 
 type Canvas struct {
 	Id           int
@@ -89,16 +90,24 @@ func (c *Canvas) Split(t float64) {
 	c.curves[r.Id] = r
 }
 
-func generateCombinations(input []*CasteljauBezierCurve, length int) <-chan []*CasteljauBezierCurve {
-	c := make(chan []*CasteljauBezierCurve)
+func generateCombinations(input []*CasteljauBezierCurve, length int) (combos [][]*CasteljauBezierCurve) {
+	n := len(input)
+	for num := 0; num < (1 << uint(n)); num++ {
+		combination := []*CasteljauBezierCurve{}
+		for ndx := 0; ndx < n; ndx++ {
+			// (is the bit "on" in this number?)
+			if num&(1<<uint(ndx)) != 0 && input[ndx] != nil {
+				// (then add it to the combination)
+				combination = append(combination, input[ndx])
+			}
+		}
+		//fmt.Println(combination)
+		if len(combination) == 2 {
+			combos = append(combos, combination)
+		}
+	}
 
-	go func(c chan []*CasteljauBezierCurve) {
-		defer close(c)
-
-		AddCombo(c, nil, input, length)
-	}(c)
-
-	return c
+	return combos
 }
 
 func AddCombo(c chan []*CasteljauBezierCurve, input, original []*CasteljauBezierCurve, length int) {
@@ -114,7 +123,7 @@ func AddCombo(c chan []*CasteljauBezierCurve, input, original []*CasteljauBezier
 	}
 }
 
-func curveIntersections(curve1 *CasteljauBezierCurve, curve2 *CasteljauBezierCurve) []sdl.Point {
+func curveIntersections(curve1 *CasteljauBezierCurve, curve2 *CasteljauBezierCurve) (points []sdl.Point) {
 	/*
 	    c1l -> c2l
 	    c1l -> c2r
@@ -133,37 +142,63 @@ func curveIntersections(curve1 *CasteljauBezierCurve, curve2 *CasteljauBezierCur
 		return nil
 	}
 
+	rect1 := curve1.Rect()
+	rect2 := curve2.Rect()
+	if rectArea(rect1) < THRESHOLD || rectArea(rect2) < THRESHOLD {
+		points = append(points, midpoint(rectMidpoint(rect1), rectMidpoint(rect2)))
+		return
+	}
+
 	c1l, c1r := curve1.splitCurve(0.5, false)
 	c2l, c2r := curve2.splitCurve(0.5, false)
 
-	var points []sdl.Point
-	var curves []*CasteljauBezierCurve
-	localCombs := generateCombinations(append(curves, c1l, c1r, c2l, c2r), 2)
+	//var curves []*CasteljauBezierCurve
+	//localCombs := generateCombinations(append(curves, c1l, c1r, c2l, c2r), 2)
+	localCombs := [][]*CasteljauBezierCurve{
+		{c1l, c2l},
+		{c1l, c2r},
+		{c1r, c2l},
+		{c1r, c2r},
+	}
 
-	for cmb := range localCombs {
+	for _, cmb := range localCombs {
 		if len(cmb) != 2 {
 			continue
 		}
 		r1 := cmb[0].Rect()
 		r2 := cmb[1].Rect()
 
-		ri, ok := r1.Intersect(r2)
+		_, ok := r1.Intersect(r2)
 		if !ok {
 			continue
 		}
+		//if ri.W*ri.H < THRESHOLD/5 {
+		//	continue
+		//}
 
-		rectSize := ri.W * ri.W
-		if rectSize < THRESHOLD {
-			points = append(points, midpoint(sdl.Point{X: r1.X, Y: r1.Y}, sdl.Point{X: r2.X, Y: r2.Y}))
-			continue
+		r1Size := r1.W * r1.W
+		r2Size := r2.W * r2.H
+		if r1Size < THRESHOLD || r2Size < THRESHOLD {
+			points = append(points, midpoint(rectMidpoint(r1), rectMidpoint(r2)))
+			break
 		}
 		newPoints := curveIntersections(cmb[0], cmb[1])
 		if newPoints != nil {
-			points = append(points, newPoints...)
+			points = append(points, newPoints[0])
 		}
 	}
 
 	return points
+}
+
+func rectArea(rect *sdl.Rect) int32 {
+	return rect.W * rect.H
+}
+
+func rectMidpoint(r *sdl.Rect) sdl.Point {
+	x := r.X + r.W/2
+	y := r.Y + r.H/2
+	return sdl.Point{X: x, Y: y}
 }
 
 func midpoint(a, b sdl.Point) sdl.Point {
@@ -183,7 +218,7 @@ func (c *Canvas) Intersections() []sdl.Point {
 	}
 	combinations := generateCombinations(curves, 2)
 
-	for curveComb := range combinations {
+	for _, curveComb := range combinations {
 		if len(curveComb) != 2 {
 			continue
 		}
@@ -218,7 +253,7 @@ func (c *Canvas) Mouse2Down(x, y int32) {
 		Y: y,
 	}
 	if mousePt.InRect(c.dst) {
-		c.Split(0.5)
+		c.Split(SplitVal)
 	}
 }
 

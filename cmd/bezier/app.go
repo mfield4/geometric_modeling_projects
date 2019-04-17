@@ -61,8 +61,26 @@ func (app *App) Input() (map[int]func(int), bool) {
 
 			case *sdl.KeyboardEvent:
 				//fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n", e.Timestamp, e.Type, e.Keysym.Sym, e.Keysym.Mod, e.State, e.Repeat)
-				if e.State == 1 && e.Keysym.Sym == sdl.K_r {
-					println("appending r")
+				if e.State != 1 {
+					continue
+				}
+
+				if e.Keysym.Sym == sdl.K_c {
+					ui.Bern = !ui.Bern
+				}
+
+				if e.Keysym.Sym == sdl.K_RIGHT {
+					if ui.SplitVal >= 0.99999 {
+						ui.SplitVal = 0
+					}
+					ui.SplitVal += 0.01
+				}
+
+				if e.Keysym.Sym == sdl.K_LEFT {
+					if ui.SplitVal <= 0 {
+						ui.SplitVal = 1
+					}
+					ui.SplitVal -= 0.01
 				}
 			}
 		}

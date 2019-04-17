@@ -7,6 +7,9 @@ import (
 	"math"
 )
 
+var Steps = 1000
+var Bern = true
+
 type BezierCurve interface {
 	Ui
 	Add(...sdl.Point)
@@ -16,13 +19,9 @@ type BezierCurve interface {
 	RegisterMM(mouseMotions map[int]MouseMotion)
 }
 
-var Steps = 1000
-
 type CasteljauBezierCurve struct {
 	Id    int
 	layer int
-
-	bern bool
 
 	focused bool
 	index   int
@@ -32,19 +31,10 @@ type CasteljauBezierCurve struct {
 	bernstein   [][]func(t float64) float64
 }
 
-func (cbc *CasteljauBezierCurve) Selected(s bool) {
-	cbc.focused = s
-}
-
-func (cbc *CasteljauBezierCurve) IsSelected() bool {
-	return cbc.focused
-}
-
 func NewCasteljauBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
 	cbc := &CasteljauBezierCurve{
 		Id:          ID,
 		layer:       layer,
-		bern:        true,
 		focused:     false,
 		index:       0,
 		ctlPoints:   make([]sdl.Point, 0),
@@ -174,7 +164,11 @@ func (cbc *CasteljauBezierCurve) Render(renderer *sdl.Renderer) {
 	//	renderer.SetDrawColor(255, 255, 255, 255/2)
 	//	renderer.DrawRect(cbc.Rect())
 	//}
-	renderer.SetDrawColor(0, 0, 255, 255)
+	if Bern {
+		renderer.SetDrawColor(0, 255, 255, 255)
+	} else {
+		renderer.SetDrawColor(255, 0, 255, 255)
+	}
 	renderer.DrawLines(cbc.curvePoints)
 }
 

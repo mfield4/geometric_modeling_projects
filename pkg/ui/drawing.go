@@ -9,7 +9,7 @@ import (
 
 func (cbc *CasteljauBezierCurve) Draw() {
 	// Do the algorithm to get the points from the control points
-	if cbc.bern {
+	if Bern {
 		cbc.drawBern()
 		return
 	}
@@ -28,9 +28,29 @@ func (cbc *CasteljauBezierCurve) drawCastel() {
 }
 
 func (cbc *CasteljauBezierCurve) casteljauCurvePoint(t float64) sdl.Point {
-	lPoints, _ := cbc.splitCurve(t, false)
+	length := len(cbc.ctlPoints)
+	ctlPoints := make([][]sdl.Point, length+1)
 
-	return lPoints.ctlPoints[len(lPoints.ctlPoints)-1]
+	for i := 0; i < length+1; i++ {
+		ctlPoints[i] = make([]sdl.Point, length+1)
+	}
+	for i := range cbc.ctlPoints {
+		ctlPoints[0][i] = cbc.ctlPoints[i]
+	}
+	for j := 1; j < length; j++ {
+		for i := 0; i < (length - j); i++ {
+			pointFunc := func(pt1, pt2 sdl.Point) sdl.Point {
+				pt := sdl.Point{
+					X: round((1-t)*float64(pt1.X) + t*float64(pt2.X)),
+					Y: round((1-t)*float64(pt1.Y) + t*float64(pt2.Y)),
+				}
+				return pt
+			}
+			ctlPoints[j][i] = pointFunc(ctlPoints[j-1][i], ctlPoints[j-1][i+1])
+		}
+	}
+
+	return ctlPoints[length-1][0]
 }
 
 func (cbc *CasteljauBezierCurve) splitCurve(t float64, register bool) (l *CasteljauBezierCurve, r *CasteljauBezierCurve) {
