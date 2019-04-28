@@ -1,7 +1,9 @@
 package main
 
+import ap "github.com/mfield4/178_projects/pkg/app"
+
 func main() {
-	app := NewApp()
+	app := ap.NewApp(nil)
 
 	const TimePerFrame = 16 // ms
 

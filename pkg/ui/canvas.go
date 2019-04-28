@@ -5,7 +5,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-var THRESHOLD int32 = 30
+var THRESHOLD int32 = 50
 var SplitVal = 0.5
 
 type Canvas struct {
