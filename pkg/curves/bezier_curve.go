@@ -1,4 +1,4 @@
-package ui
+package curves
 
 import (
 	"fmt"
@@ -9,15 +9,6 @@ import (
 
 var Steps = 1000
 var Bern = true
-
-type BezierCurve interface {
-	Ui
-	Add(...sdl.Point)
-	Draw()
-	RegisterM1d(downs map[int]Mouse1Down)
-	RegisterM1u(ups map[int]Mouse1Up)
-	RegisterMM(mouseMotions map[int]MouseMotion)
-}
 
 type CasteljauBezierCurve struct {
 	Id    int
@@ -31,7 +22,15 @@ type CasteljauBezierCurve struct {
 	bernstein   [][]func(t float64) float64
 }
 
-func NewCasteljauBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
+func (cbc *CasteljauBezierCurve) Curve() []sdl.Point {
+	return cbc.curvePoints
+}
+
+func (cbc *CasteljauBezierCurve) Poly() []sdl.Point {
+	return cbc.ctlPoints
+}
+
+func NewBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
 	cbc := &CasteljauBezierCurve{
 		Id:          ID,
 		layer:       layer,
@@ -40,13 +39,6 @@ func NewCasteljauBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve
 		ctlPoints:   make([]sdl.Point, 0),
 		curvePoints: make([]sdl.Point, Steps),
 		bernstein:   make([][]func(float64) float64, 0),
-	}
-
-	if register {
-		cbc.RegisterCol()
-		cbc.RegisterM1d()
-		cbc.RegisterM1u()
-		cbc.RegisterMM()
 	}
 	return cbc
 }
@@ -64,6 +56,8 @@ func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
 			cbc.bernstein[i][j] = bernsteinPoly(int64(j), int64(i))
 		}
 	}
+
+	cbc.Draw()
 }
 
 func (cbc *CasteljauBezierCurve) PressActive(x, y int32) bool {
@@ -119,22 +113,6 @@ func (cbc *CasteljauBezierCurve) MouseMotion(x, y int32) {
 	cbc.Draw()
 }
 
-func (cbc *CasteljauBezierCurve) RegisterCol() {
-	GetCollisionMap()[cbc.Id] = cbc
-}
-
-func (cbc *CasteljauBezierCurve) RegisterM1d() {
-	GetMouse1dCommands()[cbc.Id] = cbc
-}
-
-func (cbc *CasteljauBezierCurve) RegisterM1u() {
-	GetMouse1uCommands()[cbc.Id] = cbc
-}
-
-func (cbc *CasteljauBezierCurve) RegisterMM() {
-	GetMouseMMCommands()[cbc.Id] = cbc
-}
-
 func (cbc *CasteljauBezierCurve) Layer() int {
 	return cbc.layer
 }
@@ -170,28 +148,6 @@ func (cbc *CasteljauBezierCurve) Render(renderer *sdl.Renderer) {
 		renderer.SetDrawColor(255, 0, 255, 255)
 	}
 	renderer.DrawLines(cbc.curvePoints)
-}
-
-func (cbc *CasteljauBezierCurve) Rect() *sdl.Rect {
-	if len(cbc.ctlPoints) == 0 {
-		return nil
-	}
-
-	canvasW := (WindowWidth * 2) / 3
-
-	dst := &sdl.Rect{
-		X: 0,
-		Y: 0,
-		W: canvasW,
-		H: WindowHeight,
-	}
-
-	minBoundedRect, ok := sdl.EnclosePoints(cbc.ctlPoints, dst)
-	if !ok {
-		return nil
-	}
-
-	return &minBoundedRect
 }
 
 func (cbc *CasteljauBezierCurve) current() []sdl.Point {

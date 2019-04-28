@@ -1,9 +1,14 @@
 package events
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"fmt"
+	"github.com/veandco/go-sdl2/sdl"
+	"sort"
+)
 
 type MousePressObserver interface {
-	MousePressed(x, y int32)
+	Layer(state, x, y int32) int
+	Press(state, x, y int32)
 }
 
 type MousePressEvent struct {
@@ -17,10 +22,16 @@ func NewMousePressEvent() *MousePressEvent {
 }
 
 func (mpe *MousePressEvent) Notify() {
-	x, y, _ := sdl.GetMouseState()
+	x, y, state := sdl.GetMouseState()
 
-	for _, obs := range mpe.observers {
-		obs.MousePressed(x, y)
+	sort.Slice(mpe.observers, func(i, j int) bool {
+		return mpe.observers[i].Layer(int32(state), x, y) > mpe.observers[j].Layer(int32(state), x, y)
+	})
+
+	fmt.Printf("%+v\n", mpe.observers)
+
+	if mpe.observers[0].Layer(int32(state), x, y) > 0 {
+		mpe.observers[0].Press(int32(state), x, y)
 	}
 }
 

@@ -2,16 +2,19 @@ package app
 
 import (
 	"github.com/mfield4/178_projects/pkg/state"
-	"github.com/mfield4/178_projects/pkg/ui"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+var WindowWidth int32 = 1920
+var WindowHeight int32 = 1080
+
 type App struct {
 	startTime, endTime uint32
+	updates            []func()
 
 	sdlWindow   *sdl.Window
 	sdlRenderer *sdl.Renderer
-	state.State
+	current     state.State
 }
 
 func NewApp(init state.State) *App {
@@ -19,7 +22,7 @@ func NewApp(init state.State) *App {
 		panic(err)
 	}
 
-	window, err := sdl.CreateWindow(":3", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, ui.WindowWidth, ui.WindowHeight, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow(":3", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, WindowWidth, WindowHeight, sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +38,26 @@ func NewApp(init state.State) *App {
 		endTime:     sdl.GetTicks(),
 		sdlWindow:   window,
 		sdlRenderer: renderer,
+		current:     init,
 	}
+}
+
+func (app *App) Input() bool {
+	updates, ok := app.current.Input()
+	if !ok {
+		return false
+	}
+
+	app.updates = updates
+	return true
+}
+
+func (app *App) Update() {
+	app.current.Update(app.updates)
+}
+
+func (app *App) Render() {
+	app.current.Render(app.sdlRenderer)
 }
 
 //

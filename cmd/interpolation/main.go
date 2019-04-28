@@ -5,10 +5,9 @@ import (
 )
 
 func main() {
-	interpolation := app.NewApp(NewStateA())
+	interpolation := app.NewApp(GetStateA())
 
 	for interpolation.Input() {
-		interpolation.Collision()
 		interpolation.Update()
 		interpolation.Render()
 	}
