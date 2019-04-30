@@ -26,6 +26,10 @@ type MainCanvas struct {
 	dst *sdl.Rect
 }
 
+func (mc *MainCanvas) Curve() curves.Curve {
+	return mc.curves[mc.currentCurve]
+}
+
 func NewMainCanvas(x, y, width, height int32, initCurve curves.Curve) *MainCanvas {
 	mainCanvas := &MainCanvas{
 		Id:           0,
@@ -107,8 +111,8 @@ func (*MainCanvas) Update() {
 	panic("implement me")
 }
 
-func (mc *MainCanvas) Ref() Canvas {
-	return mc
+func (mc *MainCanvas) Rect() sdl.Rect {
+	return *mc.dst
 }
 
 //

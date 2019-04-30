@@ -28,14 +28,16 @@ func NewStateA() *StateA {
 			3 State buttons
 			Optional: sliders?
 	*/
-	mousePress := events.NewMousePressEvent()
-	mouseDrag := events.NewMouseDragEvent()
-
-	newState := StateA{
-		MousePress: mousePress,
-		MouseDrag:  mouseDrag,
+	newState := &StateA{
+		MousePress: events.NewMousePressEvent(),
+		MouseDrag:  events.NewMouseDragEvent(),
 	}
-	return newState.NewMainCanvas().NewRaisedCanvas().NewReducedCanvas().NewButton().NewButton().NewButton()
+	mainCan := newState.NewMainCanvas()
+	newState.NewRaisedCanvas(mainCan)
+	newState.NewReducedCanvas(mainCan)
+	newState.NewButton().NewButton().NewButton()
+
+	return newState
 }
 
 /*
@@ -52,20 +54,24 @@ func (s *StateA) NewBezierCurve() *curves.CasteljauBezierCurve {
 	return cur
 }
 
-func (s *StateA) NewMainCanvas() *StateA {
+func (s *StateA) NewMainCanvas() *canvas.MainCanvas {
 	can := canvas.NewMainCanvas(0, 0, app.WindowWidth, app.WindowHeight/2, s.NewBezierCurve())
 
 	s.MousePress.Subscribe(can)
 	s.ui = append(s.ui, can)
-	return s
+	return can
 }
 
-func (s *StateA) NewRaisedCanvas() *StateA {
-	return s
+func (s *StateA) NewRaisedCanvas(main canvas.Canvas) *canvas.RaisedCanvas {
+	can := canvas.NewRaisedCanvas(main)
+	s.ui = append(s.ui, can)
+	return can
 }
 
-func (s *StateA) NewReducedCanvas() *StateA {
-	return s
+func (s *StateA) NewReducedCanvas(main canvas.Canvas) *canvas.ReducedCanvas {
+	can := canvas.NewReducedCanvas(main)
+	s.ui = append(s.ui, can)
+	return can
 }
 
 func (s *StateA) NewButton( /*TODO Params*/ ) *StateA {
