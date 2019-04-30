@@ -57,11 +57,11 @@ func (cbc *CasteljauBezierCurve) splitCurve(t float64, register bool) (l *Castel
 	length := len(cbc.ctlPoints)
 	ctlPoints := make([][]sdl.Point, length+1)
 	if register {
-		l = NewBezierCurve(cbc.Id, cbc.layer, register)
-		r = NewBezierCurve(cbc.Id, cbc.layer, register)
+		l = NewBezierCurve(cbc.id, cbc.layer, register)
+		r = NewBezierCurve(cbc.id, cbc.layer, register)
 	} else {
-		l = NewBezierCurve(cbc.Id, cbc.layer, register)
-		r = NewBezierCurve(cbc.Id, cbc.layer, register)
+		l = NewBezierCurve(cbc.id, cbc.layer, register)
+		r = NewBezierCurve(cbc.id, cbc.layer, register)
 	}
 
 	for i := 0; i < length+1; i++ {

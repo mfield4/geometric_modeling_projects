@@ -1,36 +1,37 @@
 package events
 
 import (
+	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
-	"sync"
+	"sort"
 )
 
 type MouseDragObserver interface {
-	MouseDrag(x, y int32)
+	Layer(state, x, y int32) int
+	Drag(x, y int32)
 }
 
 type MouseDragEvent struct {
 	observers []MouseDragObserver
 }
 
-var mde sync.Once
-var mouseDragEvent *MouseDragEvent
-
-func GetMouseDragEvent() *MouseDragEvent {
-	mde.Do(func() {
-		mouseDragEvent = &MouseDragEvent{
-			observers: nil,
-		}
-	})
-
-	return mouseDragEvent
+func NewMouseDragEvent() *MouseDragEvent {
+	return &MouseDragEvent{
+		observers: nil,
+	}
 }
 
 func (mpe *MouseDragEvent) Notify() {
-	x, y, _ := sdl.GetMouseState()
+	x, y, state := sdl.GetMouseState()
 
-	for _, obs := range mpe.observers {
-		obs.MouseDrag(x, y)
+	sort.Slice(mpe.observers, func(i, j int) bool {
+		return mpe.observers[i].Layer(int32(state), x, y) > mpe.observers[j].Layer(int32(state), x, y)
+	})
+
+	fmt.Printf("%+v\n", mpe.observers)
+
+	if mpe.observers[0].Layer(int32(state), x, y) > 0 {
+		mpe.observers[0].Drag(x, y)
 	}
 }
 

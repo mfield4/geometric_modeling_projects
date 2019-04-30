@@ -2,8 +2,6 @@ package canvas
 
 import (
 	"github.com/mfield4/178_projects/pkg/curves"
-	"github.com/mfield4/178_projects/pkg/events"
-	"github.com/mfield4/178_projects/pkg/ui"
 	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/sdl"
 	"log"
@@ -28,15 +26,13 @@ type MainCanvas struct {
 	dst *sdl.Rect
 }
 
-func NewMainCanvas(x, y, width, height int32, event *events.MousePressEvent) *MainCanvas {
-	initCurve := curves.NewBezierCurve(ui.GUID(), 2, true)
-
+func NewMainCanvas(x, y, width, height int32, initCurve curves.Curve) *MainCanvas {
 	mainCanvas := &MainCanvas{
 		Id:           0,
 		layer:        1,
-		currentCurve: initCurve.Id,
+		currentCurve: initCurve.Id(),
 		curves: map[int]curves.Curve{
-			initCurve.Id: initCurve,
+			initCurve.Id(): initCurve,
 		},
 		dst: &sdl.Rect{
 			X: x,
@@ -45,8 +41,6 @@ func NewMainCanvas(x, y, width, height int32, event *events.MousePressEvent) *Ma
 			H: height,
 		},
 	}
-
-	event.Subscribe(mainCanvas)
 
 	return mainCanvas
 }
@@ -76,14 +70,7 @@ func (mc *MainCanvas) Render(renderer *sdl.Renderer) {
 		return
 	}
 
-	for _, curve := range mc.curves {
-		ctl := curve.Poly()
-		if len(ctl) < 2 {
-			continue
-		}
-
-		points := curve.Curve()
-
+	drawPoints := func(ctl []sdl.Point) {
 		for _, pt := range ctl {
 			gfx.CircleColor(renderer, pt.X, pt.Y, 5, sdl.Color{
 				R: 255,
@@ -92,6 +79,18 @@ func (mc *MainCanvas) Render(renderer *sdl.Renderer) {
 				A: 255,
 			})
 		}
+
+	}
+
+	for _, curve := range mc.curves {
+		ctl := curve.Poly()
+		drawPoints(ctl)
+
+		if len(ctl) < 2 {
+			continue
+		}
+
+		points := curve.Curve()
 
 		err := renderer.SetDrawColor(0, 255, 255, 255)
 		err = renderer.DrawLines(points)

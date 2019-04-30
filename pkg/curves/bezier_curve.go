@@ -2,7 +2,6 @@ package curves
 
 import (
 	"fmt"
-	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/sdl"
 	"math"
 )
@@ -11,7 +10,7 @@ var Steps = 1000
 var Bern = true
 
 type CasteljauBezierCurve struct {
-	Id    int
+	id    int
 	layer int
 
 	focused bool
@@ -22,17 +21,9 @@ type CasteljauBezierCurve struct {
 	bernstein   [][]func(t float64) float64
 }
 
-func (cbc *CasteljauBezierCurve) Curve() []sdl.Point {
-	return cbc.curvePoints
-}
-
-func (cbc *CasteljauBezierCurve) Poly() []sdl.Point {
-	return cbc.ctlPoints
-}
-
 func NewBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
 	cbc := &CasteljauBezierCurve{
-		Id:          ID,
+		id:          ID,
 		layer:       layer,
 		focused:     false,
 		index:       0,
@@ -40,7 +31,12 @@ func NewBezierCurve(ID, layer int, register bool) *CasteljauBezierCurve {
 		curvePoints: make([]sdl.Point, Steps),
 		bernstein:   make([][]func(float64) float64, 0),
 	}
+
 	return cbc
+}
+
+func (cbc *CasteljauBezierCurve) Id() int {
+	return cbc.id
 }
 
 func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
@@ -60,11 +56,65 @@ func (cbc *CasteljauBezierCurve) Add(points ...sdl.Point) {
 	cbc.Draw()
 }
 
-func (cbc *CasteljauBezierCurve) PressActive(x, y int32) bool {
-	cmp := func(p1, p2 sdl.Point) float64 {
-		first := math.Pow(float64(p2.X-p1.X), 2)
-		second := math.Pow(float64(p2.Y-p1.Y), 2)
-		return math.Sqrt(first + second)
+func (cbc *CasteljauBezierCurve) Curve() []sdl.Point {
+	return cbc.curvePoints
+}
+
+func (cbc *CasteljauBezierCurve) Poly() []sdl.Point {
+	return cbc.ctlPoints
+}
+
+func (cbc *CasteljauBezierCurve) Press(state, x, y int32) {
+	if state == 0 {
+		cbc.focused = false
+		cbc.Draw()
+		return
+	}
+
+	if cbc.focused {
+		return
+	}
+
+	cbc.focused = true
+
+	mousePt := sdl.Point{
+		X: x,
+		Y: y,
+	}
+
+	low := math.MaxFloat64
+	for i, pt := range cbc.ctlPoints {
+		cur := Dist(pt, mousePt)
+		if cur < low {
+			cbc.index = i
+			low = cur
+		}
+	}
+
+	cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y = x, y
+	fmt.Printf("PRESSED x: %d, y %d\n", cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y)
+	cbc.Draw()
+}
+
+func (cbc *CasteljauBezierCurve) Drag(x, y int32) {
+	if !cbc.focused {
+		return
+	}
+
+	cbc.ctlPoints[cbc.index].X = x
+	cbc.ctlPoints[cbc.index].Y = y
+	cbc.Draw()
+}
+
+var THRESHOLD = 10.0
+
+func (cbc *CasteljauBezierCurve) Layer(state, x, y int32) int {
+	if state != 1 {
+		if cbc.focused {
+			return cbc.layer
+		}
+
+		return 0
 	}
 
 	mousePt := sdl.Point{
@@ -72,86 +122,23 @@ func (cbc *CasteljauBezierCurve) PressActive(x, y int32) bool {
 		Y: y,
 	}
 
-	for i, pt := range cbc.ctlPoints {
-		if cmp(mousePt, pt) < 20 {
-			cbc.index = i
-			return true
+	low := math.MaxFloat64
+	for _, pt := range cbc.ctlPoints {
+		cur := Dist(pt, mousePt)
+		if cur < low {
+			low = cur
 		}
 	}
 
-	return false
-}
-
-func (cbc *CasteljauBezierCurve) Mouse1Down(x, y int32) {
-	if cbc.focused {
-		return
+	if low > THRESHOLD {
+		return 0
 	}
-	cbc.focused = true
 
-	cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y = x, y
-	fmt.Printf("PRESSED x: %d, y %d\n", cbc.ctlPoints[cbc.index].X, cbc.ctlPoints[cbc.index].Y)
-	cbc.Draw()
-}
-
-func (cbc *CasteljauBezierCurve) ReleaseActive(x, y int32) bool {
-	return cbc.focused
-}
-
-func (cbc *CasteljauBezierCurve) Mouse1Up(x, y int32) {
-	cbc.focused = false
-	cbc.Draw()
-
-}
-
-func (cbc *CasteljauBezierCurve) MotionActive() bool {
-	return cbc.focused
-}
-
-func (cbc *CasteljauBezierCurve) MouseMotion(x, y int32) {
-	cbc.ctlPoints[cbc.index].X = x
-	cbc.ctlPoints[cbc.index].Y = y
-	cbc.Draw()
-}
-
-func (cbc *CasteljauBezierCurve) Layer() int {
 	return cbc.layer
 }
 
-func (cbc *CasteljauBezierCurve) Render(renderer *sdl.Renderer) {
-	if len(cbc.ctlPoints) == 0 {
-		return
-	}
-
-	for _, point := range cbc.ctlPoints {
-		gfx.CircleColor(renderer, point.X, point.Y, 5, sdl.Color{
-			R: 255,
-			G: 0,
-			B: 0,
-			A: 255,
-		})
-	}
-
-	renderer.SetDrawColor(0, 255, 0, 255)
-	renderer.DrawLines(cbc.ctlPoints)
-
-	if len(cbc.curvePoints) == 0 {
-		return
-	}
-
-	//if cbc.focused {
-	//	renderer.SetDrawColor(255, 255, 255, 255/2)
-	//	renderer.DrawRect(cbc.Rect())
-	//}
-	if Bern {
-		renderer.SetDrawColor(0, 255, 255, 255)
-	} else {
-		renderer.SetDrawColor(255, 0, 255, 255)
-	}
-	renderer.DrawLines(cbc.curvePoints)
-}
-
-func (cbc *CasteljauBezierCurve) current() []sdl.Point {
-	return cbc.curvePoints
+func Dist(pt1, pt2 sdl.Point) float64 {
+	return math.Sqrt(math.Pow(float64(pt2.X-pt1.X), 2) - math.Pow(float64(pt2.Y-pt2.Y), 2))
 }
 
 func round(val float64) int32 {

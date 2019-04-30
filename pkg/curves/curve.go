@@ -5,6 +5,7 @@ import (
 )
 
 type Curve interface {
+	Id() int
 	Add(...sdl.Point)
 	Draw() // Forces an update
 	Curve() []sdl.Point

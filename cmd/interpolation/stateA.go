@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/mfield4/178_projects/pkg/app"
+	"github.com/mfield4/178_projects/pkg/curves"
 	"github.com/mfield4/178_projects/pkg/events"
 	"github.com/mfield4/178_projects/pkg/ui"
 	"github.com/mfield4/178_projects/pkg/ui/canvas"
 	"github.com/veandco/go-sdl2/sdl"
 	"log"
-	"sync"
 )
 
 type StateA struct {
@@ -17,18 +17,7 @@ type StateA struct {
 	ui         []ui.Ui
 }
 
-var gsa sync.Once
-var stateA *StateA
-
-func GetStateA() *StateA {
-	gsa.Do(func() {
-		stateA = newStateA()
-	})
-
-	return stateA
-}
-
-func newStateA() *StateA {
+func NewStateA() *StateA {
 	// Init all elements in the state here
 	// Register with the events.
 	/*
@@ -40,26 +29,47 @@ func newStateA() *StateA {
 			Optional: sliders?
 	*/
 	mousePress := events.NewMousePressEvent()
-	mouseDrag := events.GetMouseDragEvent()
+	mouseDrag := events.NewMouseDragEvent()
 
-	// TODO fix ui code to be more generic here ?
-	mainCanvas := canvas.NewMainCanvas(0, 0, app.WindowWidth, app.WindowHeight/2, mousePress)
-	//raisedCanvas := canvas.NewRaisedCanvas(mainCanvas)
-	//reducedCanvas := canvas.NewReducedCanvas(mainCanvas)
-	// TODO BUTTONS
-	//stateA := button.NewButton()
-	//stateB := button.NewButton()
-	//stateC := button.NewButton()
-
-	return &StateA{
+	newState := StateA{
 		MousePress: mousePress,
 		MouseDrag:  mouseDrag,
-
-		// Everything that gets drawn in this state
-		ui: []ui.Ui{
-			mainCanvas,
-		},
 	}
+	return newState.NewMainCanvas().NewRaisedCanvas().NewReducedCanvas().NewButton().NewButton().NewButton()
+}
+
+/*
+TODO
+Each state will be a factory for all it's ui elements. Do this refactor in the following steps:
+	1. Delete/Move all current constructors
+	2. Refactor constructors to this file
+	3. Profit??
+*/
+func (s *StateA) NewBezierCurve() *curves.CasteljauBezierCurve {
+	cur := curves.NewBezierCurve(0, 2, true)
+	s.MousePress.Subscribe(cur)
+	s.MouseDrag.Subscribe(cur)
+	return cur
+}
+
+func (s *StateA) NewMainCanvas() *StateA {
+	can := canvas.NewMainCanvas(0, 0, app.WindowWidth, app.WindowHeight/2, s.NewBezierCurve())
+
+	s.MousePress.Subscribe(can)
+	s.ui = append(s.ui, can)
+	return s
+}
+
+func (s *StateA) NewRaisedCanvas() *StateA {
+	return s
+}
+
+func (s *StateA) NewReducedCanvas() *StateA {
+	return s
+}
+
+func (s *StateA) NewButton( /*TODO Params*/ ) *StateA {
+	return s
 }
 
 func (s *StateA) Input() (updates []func(), ok bool) {
@@ -68,6 +78,8 @@ func (s *StateA) Input() (updates []func(), ok bool) {
 		case *sdl.QuitEvent:
 			return updates, false
 		case *sdl.MouseMotionEvent:
+
+			updates = append(updates, func() { s.MouseDrag.Notify() })
 		case *sdl.MouseButtonEvent:
 			fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
 				t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)

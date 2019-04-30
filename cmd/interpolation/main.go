@@ -5,7 +5,8 @@ import (
 )
 
 func main() {
-	interpolation := app.NewApp(GetStateA())
+	interpolation := app.NewApp()
+	interpolation.SetCurrent(NewStateA())
 
 	for interpolation.Input() {
 		interpolation.Update()

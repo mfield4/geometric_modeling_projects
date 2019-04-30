@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/mfield4/178_projects/pkg/state"
 	"github.com/veandco/go-sdl2/sdl"
+	"sync"
 )
 
 var WindowWidth int32 = 1920
@@ -17,7 +18,18 @@ type App struct {
 	current     state.State
 }
 
-func NewApp(init state.State) *App {
+var appInstance *App
+var appIns sync.Once
+
+func GetAppInstance() *App {
+	appIns.Do(func() {
+		appInstance = NewApp()
+	})
+
+	return appInstance
+}
+
+func NewApp() *App {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
@@ -38,8 +50,16 @@ func NewApp(init state.State) *App {
 		endTime:     sdl.GetTicks(),
 		sdlWindow:   window,
 		sdlRenderer: renderer,
-		current:     init,
+		current:     nil,
 	}
+}
+
+func (app *App) Current() state.State {
+	return app.current
+}
+
+func (app *App) SetCurrent(current state.State) {
+	app.current = current
 }
 
 func (app *App) Input() bool {
